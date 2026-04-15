@@ -3,7 +3,6 @@
  */
 
 const ACCESS_KEY = "your-secret-key-here"; // ★ここをアプリ側の .env と合わせる
-const DRIVE_FOLDER_ID = "your-google-drive-folder-id"; // ★画像を保存する Google Drive のフォルダIDを設定してください
 
 function doPost(e) {
   const data = JSON.parse(e.postData.contents);
@@ -20,14 +19,15 @@ function doPost(e) {
   try {
     if (action === "addMeal") {
       let imageId = "";
+      const driveFolderId = data.driveFolderId;
       
-      // 画像データがある場合は Google Drive に保存
-      if (data.base64Image && DRIVE_FOLDER_ID !== "your-google-drive-folder-id") {
-        const folder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
+      // 画像データがあり、フォルダIDも指定されている場合は保存
+      if (data.base64Image && driveFolderId && driveFolderId !== "your-google-drive-folder-id") {
+        const folder = DriveApp.getFolderById(driveFolderId);
         const fileName = `meal_${Utilities.formatDate(new Date(), "GMT+9", "yyyyMMdd_HHmmss")}.jpg`;
         const blob = Utilities.newBlob(Utilities.base64Decode(data.base64Image), "image/jpeg", fileName);
         const file = folder.createFile(blob);
-        file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); // 公開権限（アプリ表示用）
+        file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
         imageId = file.getId();
       }
 

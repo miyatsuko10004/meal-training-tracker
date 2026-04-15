@@ -32,9 +32,11 @@
 
 ### 3. アプリケーションの設定
 1. プロジェクトルートに **`.env`** ファイルを作成（`.env.example` をコピー）。
-2. `.env` ファイル内の `EXPO_PUBLIC_GAS_URL` と `EXPO_PUBLIC_ACCESS_KEY` を自分の環境に合わせて設定します。
+2. `.env` ファイル内の項目を設定します。
    - `EXPO_PUBLIC_GAS_URL`: 先ほどコピーしたウェブアプリの URL
    - `EXPO_PUBLIC_ACCESS_KEY`: GAS 側で設定した秘密の文字列
+   - `EXPO_PUBLIC_DRIVE_FOLDER_ID`: 食事画像を保存する Google Drive フォルダの ID
+     - Google Drive でフォルダを作成し、URL の `folders/XXXXX` の `XXXXX` 部分をコピーして貼り付けてください。
 
 ### 4. 開発の開始
 ```bash

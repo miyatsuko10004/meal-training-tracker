@@ -1,5 +1,6 @@
 const GAS_URL = process.env.EXPO_PUBLIC_GAS_URL || "";
 const ACCESS_KEY = process.env.EXPO_PUBLIC_ACCESS_KEY || "";
+const DRIVE_FOLDER_ID = process.env.EXPO_PUBLIC_DRIVE_FOLDER_ID || "";
 
 export interface Meal {
   id: string;
@@ -55,6 +56,7 @@ export const api = {
       body: JSON.stringify({
         action: "addMeal",
         accessKey: ACCESS_KEY,
+        driveFolderId: DRIVE_FOLDER_ID,
         ...meal,
       }),
     });
