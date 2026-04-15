@@ -1,5 +1,5 @@
-const GAS_URL = "https://script.google.com/macros/s/AKfycbwUew23asqLoeNvftMbxXd3Humjw7hM_NLtS0NKE5DSdXGUclJ-ByiDbu9LjdQst1wQmw/exec";
-const ACCESS_KEY = "your-secret-key-here"; // GAS側で設定したものに差し替えてください
+const GAS_URL = process.env.EXPO_PUBLIC_GAS_URL || "";
+const ACCESS_KEY = process.env.EXPO_PUBLIC_ACCESS_KEY || "";
 
 export interface Meal {
   id: string;
@@ -29,6 +29,7 @@ export interface Profile {
 
 export const api = {
   async getSummary() {
+    if (!GAS_URL) throw new Error("GAS_URL is not defined in environment variables");
     const url = `${GAS_URL}?action=getSummary&accessKey=${ACCESS_KEY}`;
     const response = await fetch(url);
     if (!response.ok) throw new Error("Failed to fetch summary");
