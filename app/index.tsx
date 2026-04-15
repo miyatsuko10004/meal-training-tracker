@@ -39,7 +39,10 @@ export default function Dashboard() {
   return (
     <ScrollView className="flex-1 bg-[#121212] p-4">
       {/* カロリーサマリー */}
-      <View className="bg-[#1E1E1E] p-6 rounded-3xl mb-6 shadow-lg border border-[#333]">
+      <TouchableOpacity 
+        onPress={() => router.push("/analytics")}
+        className="bg-[#1E1E1E] p-6 rounded-3xl mb-6 shadow-lg border border-[#333]"
+      >
         <Text className="text-gray-400 text-sm mb-1 font-medium">今日の摂取カロリー</Text>
         <View className="flex-row items-baseline mb-4">
           <Text className="text-white text-5xl font-bold">{todayCalories}</Text>
@@ -51,7 +54,8 @@ export default function Dashboard() {
             style={{ width: `${Math.min((todayCalories / targetCalories) * 100, 100)}%` }} 
           />
         </View>
-      </View>
+        <Text className="text-[#BB86FC] text-xs mt-3 text-right">詳細な分析を見る 〉</Text>
+      </TouchableOpacity>
 
       {/* アクションボタン */}
       <View className="flex-row justify-between mb-8">
