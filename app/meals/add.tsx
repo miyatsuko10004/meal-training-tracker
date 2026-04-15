@@ -1,20 +1,23 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, Alert, Modal, StyleSheet } from "react-native";
+import { View, Text, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, Alert, Modal, StyleSheet, Image } from "react-native";
 import { api, Menu } from "../../src/lib/api";
 import { foodApi } from "../../src/lib/foodApi";
 import { useRouter } from "expo-router";
-import { Save, Barcode, X, Star, ChevronRight } from "lucide-react-native";
+import { Save, Barcode, X, Star, ChevronRight, Camera, Image as ImageIcon } from "lucide-react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
+import * as ImagePicker from "expo-image-picker";
 
 const TIME_SLOTS = ["朝食", "昼食", "夕食", "間食", "トレ前", "トレ後"];
 
 export default function AddMeal() {
   const router = useRouter();
-  const [permission, requestPermission] = useCameraPermissions();
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [loading, setLoading] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [isMenuModalVisible, setIsMenuModalVisible] = useState(false);
   const [menus, setMenus] = useState<Menu[]>([]);
+  const [image, setImage] = useState<string | null>(null);
+  const [base64Image, setBase64Image] = useState<string | null>(null);
   
   const [form, setForm] = useState({
     date: new Date().toISOString().split("T")[0],
@@ -36,6 +39,32 @@ export default function AddMeal() {
       setMenus(data);
     } catch (err) {
       console.error("Failed to load menus", err);
+    }
+  };
+
+  const pickImage = async (useCamera: boolean) => {
+    let result;
+    const options: ImagePicker.ImagePickerOptions = {
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.5, // サーバー負荷軽減のため品質を落とす
+      base64: true,
+    };
+
+    if (useCamera) {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("エラー", "カメラの使用が許可されていません");
+        return;
+      }
+      result = await ImagePicker.launchCameraAsync(options);
+    } else {
+      result = await ImagePicker.launchImageLibraryAsync(options);
+    }
+
+    if (!result.canceled) {
+      setImage(result.assets[0].uri);
+      setBase64Image(result.assets[0].base64 || null);
     }
   };
 
@@ -100,8 +129,8 @@ export default function AddMeal() {
   };
 
   const startScanning = async () => {
-    if (!permission?.granted) {
-      const { granted } = await requestPermission();
+    if (!cameraPermission?.granted) {
+      const { granted } = await requestCameraPermission();
       if (!granted) {
         Alert.alert("権限エラー", "カメラの利用が許可されていません");
         return;
@@ -126,6 +155,7 @@ export default function AddMeal() {
         fat: Number(form.fat || 0),
         carbs: Number(form.carbs || 0),
         imageId: "",
+        base64Image: base64Image || undefined,
         memo: form.memo,
       });
       router.replace("/");
@@ -140,7 +170,7 @@ export default function AddMeal() {
   return (
     <ScrollView className="flex-1 bg-[#121212] p-4">
       {/* 補助入力ボタン */}
-      <View className="flex-row justify-between mb-6">
+      <View className="flex-row justify-between mb-4">
         <TouchableOpacity
           onPress={startScanning}
           className="bg-[#1E1E1E] flex-1 mr-2 p-4 rounded-2xl flex-row items-center justify-center border border-[#BB86FC]"
@@ -155,6 +185,44 @@ export default function AddMeal() {
           <Star size={18} color="#03DAC6" />
           <Text className="text-[#03DAC6] font-bold ml-2">マイメニュー</Text>
         </TouchableOpacity>
+      </View>
+
+      {/* 画像選択セクション */}
+      <View className="mb-6">
+        <Text className="text-gray-400 text-sm mb-2 font-medium">食事の写真</Text>
+        <View className="bg-[#1E1E1E] rounded-3xl p-4 border border-[#333] items-center">
+          {image ? (
+            <View className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden mb-4">
+              <Image source={{ uri: image }} className="w-full h-full" />
+              <TouchableOpacity
+                onPress={() => setImage(null)}
+                className="absolute top-2 right-2 bg-black/50 p-2 rounded-full"
+              >
+                <X size={20} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View className="w-full aspect-[4/3] bg-[#121212] rounded-2xl border-2 border-dashed border-[#333] items-center justify-center mb-4">
+              <Camera size={40} color="#333" />
+            </View>
+          )}
+          <View className="flex-row">
+            <TouchableOpacity
+              onPress={() => pickImage(true)}
+              className="bg-[#333] px-6 py-3 rounded-full flex-row items-center mr-2"
+            >
+              <Camera size={18} color="#fff" />
+              <Text className="text-white font-bold ml-2">撮影</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => pickImage(false)}
+              className="bg-[#333] px-6 py-3 rounded-full flex-row items-center ml-2"
+            >
+              <ImageIcon size={18} color="#fff" />
+              <Text className="text-white font-bold ml-2">選択</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </View>
 
       {/* マイメニュー選択モーダル */}

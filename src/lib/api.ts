@@ -49,7 +49,7 @@ export const api = {
     }>;
   },
 
-  async addMeal(meal: Omit<Meal, "id">) {
+  async addMeal(meal: Omit<Meal, "id"> & { base64Image?: string }) {
     const response = await fetch(GAS_URL, {
       method: "POST",
       body: JSON.stringify({
