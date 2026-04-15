@@ -18,6 +18,7 @@
    - **`Meals`**: `id`, `date`, `timeSlot`, `calories`, `protein`, `fat`, `carbs`, `imageId`, `memo`
    - **`Workouts`**: `id`, `date`, `title`
    - **`Sets`**: `id`, `workoutId`, `exerciseName`, `weight`, `reps`, `rpe`, `order`
+   - **`Menus`**: `id`, `name`, `calories`, `protein`, `fat`, `carbs`
 
 ### 2. Google Apps Script (GAS) の設定
 1. スプレッドシートの **[拡張機能] > [Apps Script]** を開く。

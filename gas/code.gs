@@ -1,14 +1,8 @@
 /**
  * M&T Optimizer - Backend API (GAS)
- * 
- * 使い方:
- * 1. Google スプレッドシートの [拡張機能] > [Apps Script] を開く
- * 2. このコードをエディタに貼り付ける
- * 3. ACCESS_KEY を自分だけの秘密の文字列に変更する
- * 4. [デプロイ] > [新しいデプロイ] から「ウェブアプリ」として公開する
  */
 
-const ACCESS_KEY = "your-secret-key-here"; // ★ここをアプリ側の src/lib/api.ts と合わせる
+const ACCESS_KEY = "your-secret-key-here"; // ★ここをアプリ側の .env と合わせる
 
 function doPost(e) {
   const data = JSON.parse(e.postData.contents);
@@ -54,6 +48,16 @@ function doPost(e) {
           index + 1
         ]);
       });
+    } else if (action === "addMenu") {
+      const sheet = ss.getSheetByName("Menus");
+      sheet.appendRow([
+        Utilities.getUuid(),
+        data.name,
+        data.calories,
+        data.protein,
+        data.fat,
+        data.carbs
+      ]);
     }
 
     return ContentService.createTextOutput(JSON.stringify({ success: true }))
@@ -65,7 +69,7 @@ function doPost(e) {
 }
 
 function doGet(e) {
-  // 簡易認証 (URLパラメータ ?accessKey=xxx)
+  // 簡易認証
   if (e.parameter.accessKey !== ACCESS_KEY) {
     return ContentService.createTextOutput("Unauthorized").setMimeType(ContentService.MimeType.TEXT);
   }
@@ -78,32 +82,27 @@ function doGet(e) {
     const workouts = getRowsAsJson(ss.getSheetByName("Workouts"));
     const profileRows = getRowsAsJson(ss.getSheetByName("Profile"));
     const profile = profileRows.length > 0 ? profileRows[0] : {
-      targetWeight: 0,
-      targetCalories: 2000,
-      targetProtein: 0,
-      targetFat: 0,
-      targetCarbs: 0
+      targetWeight: 0, targetCalories: 2000, targetProtein: 0, targetFat: 0, targetCarbs: 0
     };
 
     return ContentService.createTextOutput(JSON.stringify({ meals, workouts, profile }))
                          .setMimeType(ContentService.MimeType.JSON);
+  } else if (action === "getMenus") {
+    const menus = getRowsAsJson(ss.getSheetByName("Menus"));
+    return ContentService.createTextOutput(JSON.stringify({ menus }))
+                         .setMimeType(ContentService.MimeType.JSON);
   }
 }
 
-/**
- * シートのデータをJSON形式の配列に変換するヘルパー
- */
 function getRowsAsJson(sheet) {
   const range = sheet.getDataRange();
-  if (range.getNumRows() < 2) return []; // ヘッダーのみ、または空の場合
+  if (range.getNumRows() < 2) return [];
   
   const data = range.getValues();
   const headers = data.shift();
   return data.map(row => {
     const obj = {};
-    headers.forEach((header, i) => {
-      obj[header] = row[i];
-    });
+    headers.forEach((header, i) => obj[header] = row[i]);
     return obj;
   });
 }

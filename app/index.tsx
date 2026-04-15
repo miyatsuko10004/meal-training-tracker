@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from "react-native";
 import { api, Meal, Workout, Profile } from "../src/lib/api";
-import { PlusCircle, Activity, Utensils, Dumbbell } from "lucide-react-native";
+import { Activity, Utensils, Dumbbell } from "lucide-react-native";
+import { useRouter } from "expo-router";
 
 export default function Dashboard() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<{ meals: Meal[]; workouts: Workout[]; profile: Profile } | null>(null);
 
@@ -53,11 +55,17 @@ export default function Dashboard() {
 
       {/* アクションボタン */}
       <View className="flex-row justify-between mb-8">
-        <TouchableOpacity className="bg-[#BB86FC] flex-1 mr-2 p-4 rounded-2xl flex-row items-center justify-center">
+        <TouchableOpacity 
+          onPress={() => router.push("/meals/add")}
+          className="bg-[#BB86FC] flex-1 mr-2 p-4 rounded-2xl flex-row items-center justify-center"
+        >
           <Utensils size={20} color="#000" />
           <Text className="text-black font-bold ml-2">食事を記録</Text>
         </TouchableOpacity>
-        <TouchableOpacity className="bg-[#03DAC6] flex-1 ml-2 p-4 rounded-2xl flex-row items-center justify-center">
+        <TouchableOpacity 
+          onPress={() => router.push("/workouts/add")}
+          className="bg-[#03DAC6] flex-1 ml-2 p-4 rounded-2xl flex-row items-center justify-center"
+        >
           <Dumbbell size={20} color="#000" />
           <Text className="text-black font-bold ml-2">トレを記録</Text>
         </TouchableOpacity>

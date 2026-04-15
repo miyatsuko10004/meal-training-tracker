@@ -27,6 +27,15 @@ export interface Profile {
   targetCarbs: number;
 }
 
+export interface Menu {
+  id: string;
+  name: string;
+  calories: number;
+  protein: number;
+  fat: number;
+  carbs: number;
+}
+
 export const api = {
   async getSummary() {
     if (!GAS_URL) throw new Error("GAS_URL is not defined in environment variables");
@@ -50,6 +59,27 @@ export const api = {
       }),
     });
     if (!response.ok) throw new Error("Failed to add meal");
+    return response.json();
+  },
+
+  async getMenus() {
+    const url = `${GAS_URL}?action=getMenus&accessKey=${ACCESS_KEY}`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error("Failed to fetch menus");
+    const data = await response.json();
+    return data.menus as Menu[];
+  },
+
+  async addMenu(menu: Omit<Menu, "id">) {
+    const response = await fetch(GAS_URL, {
+      method: "POST",
+      body: JSON.stringify({
+        action: "addMenu",
+        accessKey: ACCESS_KEY,
+        ...menu,
+      }),
+    });
+    if (!response.ok) throw new Error("Failed to add menu");
     return response.json();
   },
 
