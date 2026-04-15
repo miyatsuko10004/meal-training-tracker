@@ -83,6 +83,19 @@ export const api = {
     return response.json();
   },
 
+  async updateProfile(profile: Profile) {
+    const response = await fetch(GAS_URL, {
+      method: "POST",
+      body: JSON.stringify({
+        action: "updateProfile",
+        accessKey: ACCESS_KEY,
+        ...profile,
+      }),
+    });
+    if (!response.ok) throw new Error("Failed to update profile");
+    return response.json();
+  },
+
   async addWorkout(workout: Omit<Workout, "id"> & { sets: any[] }) {
     const response = await fetch(GAS_URL, {
       method: "POST",

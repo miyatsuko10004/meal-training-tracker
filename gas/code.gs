@@ -58,6 +58,24 @@ function doPost(e) {
         data.fat,
         data.carbs
       ]);
+    } else if (action === "updateProfile") {
+      const sheet = ss.getSheetByName("Profile");
+      // Profileシートは常に2行目（データ行）を更新する運用とする
+      // データがない場合は appendRow、ある場合は 2行目を上書き
+      const lastRow = sheet.getLastRow();
+      const rowData = [
+        data.targetWeight,
+        data.targetCalories,
+        data.targetProtein,
+        data.targetFat,
+        data.targetCarbs
+      ];
+      
+      if (lastRow < 2) {
+        sheet.appendRow(rowData);
+      } else {
+        sheet.getRange(2, 1, 1, rowData.length).setValues([rowData]);
+      }
     }
 
     return ContentService.createTextOutput(JSON.stringify({ success: true }))
