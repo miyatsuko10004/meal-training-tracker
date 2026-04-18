@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from "rea
 import { api, Meal, Workout, Profile } from "../src/lib/api";
 import { Activity, Utensils, Dumbbell } from "lucide-react-native";
 import { useRouter } from "expo-router";
+import { getTodayStr } from "../src/hooks/useMealForm";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -33,7 +34,7 @@ export default function Dashboard() {
     );
   }
 
-  const todayMeals = data?.meals.filter(m => m.date === new Date().toISOString().split("T")[0]) || [];
+  const todayMeals = data?.meals.filter(m => m.date === getTodayStr()) || [];
   const todayCalories = todayMeals.reduce((acc, m) => acc + Number(m.calories), 0);
   const todayP = todayMeals.reduce((acc, m) => acc + Number(m.protein), 0);
   const todayF = todayMeals.reduce((acc, m) => acc + Number(m.fat), 0);

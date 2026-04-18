@@ -21,14 +21,8 @@ function doPost(e) {
       let imageId = "";
       const driveFolderId = data.driveFolderId;
       
-      // 画像データがあり、フォルダIDも指定されている場合は保存
       if (data.base64Image && driveFolderId && driveFolderId !== "your-google-drive-folder-id") {
-        const folder = DriveApp.getFolderById(driveFolderId);
-        const fileName = `meal_${Utilities.formatDate(new Date(), "GMT+9", "yyyyMMdd_HHmmss")}.jpg`;
-        const blob = Utilities.newBlob(Utilities.base64Decode(data.base64Image), "image/jpeg", fileName);
-        const file = folder.createFile(blob);
-        file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-        imageId = file.getId();
+        imageId = saveToDrive(data.base64Image, driveFolderId);
       }
 
       const sheet = ss.getSheetByName("Meals");
@@ -45,30 +39,12 @@ function doPost(e) {
       ]);
     } else if (action === "updateMeal") {
       const sheet = ss.getSheetByName("Meals");
-      const dataRange = sheet.getDataRange();
-      const values = dataRange.getValues();
-      const headers = values[0];
-      const idIndex = headers.indexOf("id");
-      
-      let rowIndex = -1;
-      for (let i = 1; i < values.length; i++) {
-        if (values[i][idIndex] == data.id) {
-          rowIndex = i + 1;
-          break;
-        }
-      }
+      const rowIndex = findRowIndexById(sheet, data.id);
       
       if (rowIndex !== -1) {
         let imageId = data.imageId || "";
-        const driveFolderId = data.driveFolderId;
-        
-        if (data.base64Image && driveFolderId) {
-          const folder = DriveApp.getFolderById(driveFolderId);
-          const fileName = `meal_${Utilities.formatDate(new Date(), "GMT+9", "yyyyMMdd_HHmmss")}.jpg`;
-          const blob = Utilities.newBlob(Utilities.base64Decode(data.base64Image), "image/jpeg", fileName);
-          const file = folder.createFile(blob);
-          file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-          imageId = file.getId();
+        if (data.base64Image && data.driveFolderId) {
+          imageId = saveToDrive(data.base64Image, data.driveFolderId);
         }
 
         const rowData = [
@@ -88,19 +64,7 @@ function doPost(e) {
       }
     } else if (action === "deleteMeal") {
       const sheet = ss.getSheetByName("Meals");
-      const dataRange = sheet.getDataRange();
-      const values = dataRange.getValues();
-      const headers = values[0];
-      const idIndex = headers.indexOf("id");
-      
-      let rowIndex = -1;
-      for (let i = 1; i < values.length; i++) {
-        if (values[i][idIndex] == data.id) {
-          rowIndex = i + 1;
-          break;
-        }
-      }
-      
+      const rowIndex = findRowIndexById(sheet, data.id);
       if (rowIndex !== -1) {
         sheet.deleteRow(rowIndex);
       } else {
@@ -136,32 +100,21 @@ function doPost(e) {
       ]);
     } else if (action === "updateProfile") {
       const sheet = ss.getSheetByName("Profile");
-      const lastRow = sheet.getLastRow();
-      const rowData = [
-        data.targetWeight,
-        data.targetCalories,
-        data.targetProtein,
-        data.targetFat,
-        data.targetCarbs
-      ];
-      
-      if (lastRow < 2) {
+      const rowData = [data.targetWeight, data.targetCalories, data.targetProtein, data.targetFat, data.targetCarbs];
+      if (sheet.getLastRow() < 2) {
         sheet.appendRow(rowData);
       } else {
         sheet.getRange(2, 1, 1, rowData.length).setValues([rowData]);
       }
     }
 
-    return ContentService.createTextOutput(JSON.stringify({ success: true }))
-                         .setMimeType(ContentService.MimeType.JSON);
+    return ContentService.createTextOutput(JSON.stringify({ success: true })).setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
-    return ContentService.createTextOutput(JSON.stringify({ error: err.message }))
-                         .setMimeType(ContentService.MimeType.JSON);
+    return ContentService.createTextOutput(JSON.stringify({ error: err.message })).setMimeType(ContentService.MimeType.JSON);
   }
 }
 
 function doGet(e) {
-  // 簡易認証
   if (e.parameter.accessKey !== ACCESS_KEY) {
     return ContentService.createTextOutput("Unauthorized").setMimeType(ContentService.MimeType.TEXT);
   }
@@ -173,23 +126,39 @@ function doGet(e) {
     const meals = getRowsAsJson(ss.getSheetByName("Meals"));
     const workouts = getRowsAsJson(ss.getSheetByName("Workouts"));
     const profileRows = getRowsAsJson(ss.getSheetByName("Profile"));
-    const profile = profileRows.length > 0 ? profileRows[0] : {
-      targetWeight: 0, targetCalories: 2000, targetProtein: 0, targetFat: 0, targetCarbs: 0
-    };
+    const profile = profileRows.length > 0 ? profileRows[0] : { targetWeight: 0, targetCalories: 2000, targetProtein: 0, targetFat: 0, targetCarbs: 0 };
 
-    return ContentService.createTextOutput(JSON.stringify({ meals, workouts, profile }))
-                         .setMimeType(ContentService.MimeType.JSON);
+    return ContentService.createTextOutput(JSON.stringify({ meals, workouts, profile })).setMimeType(ContentService.MimeType.JSON);
   } else if (action === "getMenus") {
     const menus = getRowsAsJson(ss.getSheetByName("Menus"));
-    return ContentService.createTextOutput(JSON.stringify({ menus }))
-                         .setMimeType(ContentService.MimeType.JSON);
+    return ContentService.createTextOutput(JSON.stringify({ menus })).setMimeType(ContentService.MimeType.JSON);
   }
+}
+
+// ヘルパー関数
+function saveToDrive(base64Image, folderId) {
+  const folder = DriveApp.getFolderById(folderId);
+  const fileName = `meal_${Utilities.formatDate(new Date(), "GMT+9", "yyyyMMdd_HHmmss")}.jpg`;
+  const blob = Utilities.newBlob(Utilities.base64Decode(base64Image), "image/jpeg", fileName);
+  const file = folder.createFile(blob);
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  return file.getId();
+}
+
+function findRowIndexById(sheet, id) {
+  const values = sheet.getDataRange().getValues();
+  const idIndex = values[0].indexOf("id");
+  if (idIndex === -1) return -1;
+  
+  for (let i = 1; i < values.length; i++) {
+    if (values[i][idIndex] == id) return i + 1;
+  }
+  return -1;
 }
 
 function getRowsAsJson(sheet) {
   const range = sheet.getDataRange();
   if (range.getNumRows() < 2) return [];
-  
   const data = range.getValues();
   const headers = data.shift();
   return data.map(row => {

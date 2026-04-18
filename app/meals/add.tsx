@@ -5,7 +5,7 @@ import { foodApi } from "../../src/lib/foodApi";
 import { useRouter } from "expo-router";
 import { Save, Barcode, X, Star, ChevronRight, Camera, Image as ImageIcon } from "lucide-react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
-import * as ImagePicker from "expo-image-picker";
+import { useMealForm } from "../../src/hooks/useMealForm";
 
 const TIME_SLOTS = ["朝食", "昼食", "夕食", "間食", "トレ前", "トレ後"];
 
@@ -17,61 +17,19 @@ export default function AddMeal() {
   const [isMenuModalVisible, setIsMenuModalVisible] = useState(false);
   const [menus, setMenus] = useState<Menu[]>([]);
   const [historySuggestions, setHistorySuggestions] = useState<Menu[]>([]);
-  const [image, setImage] = useState<string | null>(null);
-  const [base64Image, setBase64Image] = useState<string | null>(null);
-  
-  const [form, setForm] = useState({
-    date: new Date().toISOString().split("T")[0],
-    timeSlot: "昼食",
-    calories: "",
-    protein: "",
-    fat: "",
-    carbs: "",
-    memo: "",
-  });
 
-  const calculateCaloriesFromPFC = () => {
-    const p = Number(form.protein) || 0;
-    const f = Number(form.fat) || 0;
-    const c = Number(form.carbs) || 0;
-    const total = p * 4 + f * 9 + c * 4;
-    if (total > 0) {
-      setForm({ ...form, calories: String(total) });
-    } else {
-      Alert.alert("情報不足", "PFCの値を入力してください");
-    }
-  };
-
-  const copyYesterdayMeal = async () => {
-    try {
-      setLoading(true);
-      const res = await api.getSummary();
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = yesterday.toISOString().split("T")[0];
-      
-      const yesterdayMeals = res.meals.filter(m => m.date === yesterdayStr);
-      const sameTimeMeal = yesterdayMeals.find(m => m.timeSlot === form.timeSlot) || yesterdayMeals[0];
-      
-      if (sameTimeMeal) {
-        setForm({
-          ...form,
-          calories: String(sameTimeMeal.calories),
-          protein: String(sameTimeMeal.protein),
-          fat: String(sameTimeMeal.fat),
-          carbs: String(sameTimeMeal.carbs),
-          memo: sameTimeMeal.memo,
-        });
-        Alert.alert("成功", "昨日の食事内容をコピーしました");
-      } else {
-        Alert.alert("データなし", "昨日の食事記録が見つかりませんでした");
-      }
-    } catch (err) {
-      Alert.alert("エラー", "コピーに失敗しました");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const {
+    form,
+    updateForm,
+    image,
+    setImage,
+    base64Image,
+    setBase64Image,
+    pickImage,
+    calculateCaloriesFromPFC,
+    validate,
+    getNumericData,
+  } = useMealForm();
 
   useEffect(() => {
     loadMenus();
@@ -90,7 +48,6 @@ export default function AddMeal() {
   const loadHistorySuggestions = async () => {
     try {
       const res = await api.getSummary();
-      // 直近のユニークな履歴を抽出
       const suggestions: Menu[] = [];
       const seen = new Set();
       
@@ -113,40 +70,13 @@ export default function AddMeal() {
     }
   };
 
-  const pickImage = async (useCamera: boolean) => {
-    let result;
-    const options: ImagePicker.ImagePickerOptions = {
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.5, // サーバー負荷軽減のため品質を落とす
-      base64: true,
-    };
-
-    if (useCamera) {
-      const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert("エラー", "カメラの使用が許可されていません");
-        return;
-      }
-      result = await ImagePicker.launchCameraAsync(options);
-    } else {
-      result = await ImagePicker.launchImageLibraryAsync(options);
-    }
-
-    if (!result.canceled) {
-      setImage(result.assets[0].uri);
-      setBase64Image(result.assets[0].base64 || null);
-    }
-  };
-
   const handleBarcodeScanned = async ({ data }: { data: string }) => {
     setIsScanning(false);
     setLoading(true);
     try {
       const product = await foodApi.getProductByBarcode(data);
       if (product) {
-        setForm({
-          ...form,
+        updateForm({
           calories: String(product.calories),
           protein: String(product.protein),
           fat: String(product.fat),
@@ -164,9 +94,38 @@ export default function AddMeal() {
     }
   };
 
+  const copyYesterdayMeal = async () => {
+    try {
+      setLoading(true);
+      const res = await api.getSummary();
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString().split("T")[0];
+      
+      const yesterdayMeals = res.meals.filter(m => m.date === yesterdayStr);
+      const sameTimeMeal = yesterdayMeals.find(m => m.timeSlot === form.timeSlot) || yesterdayMeals[0];
+      
+      if (sameTimeMeal) {
+        updateForm({
+          calories: String(sameTimeMeal.calories),
+          protein: String(sameTimeMeal.protein),
+          fat: String(sameTimeMeal.fat),
+          carbs: String(sameTimeMeal.carbs),
+          memo: sameTimeMeal.memo,
+        });
+        Alert.alert("成功", "昨日の食事内容をコピーしました");
+      } else {
+        Alert.alert("データなし", "昨日の食事記録が見つかりませんでした");
+      }
+    } catch (err) {
+      Alert.alert("エラー", "コピーに失敗しました");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const selectMenu = (menu: Menu) => {
-    setForm({
-      ...form,
+    updateForm({
       calories: String(menu.calories),
       protein: String(menu.protein),
       fat: String(menu.fat),
@@ -176,55 +135,16 @@ export default function AddMeal() {
     setIsMenuModalVisible(false);
   };
 
-  const saveAsMenu = async () => {
-    if (!form.memo || !form.calories) {
-      Alert.alert("エラー", "メニュー名（メモ欄）とカロリーを入力してください");
-      return;
-    }
-    try {
-      setLoading(true);
-      await api.addMenu({
-        name: form.memo,
-        calories: Number(form.calories),
-        protein: Number(form.protein || 0),
-        fat: Number(form.fat || 0),
-        carbs: Number(form.carbs || 0),
-      });
-      Alert.alert("成功", "マイメニューに登録しました");
-      loadMenus();
-    } catch (err) {
-      Alert.alert("エラー", "登録に失敗しました");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const startScanning = async () => {
-    if (!cameraPermission?.granted) {
-      const { granted } = await requestCameraPermission();
-      if (!granted) {
-        Alert.alert("権限エラー", "カメラの利用が許可されていません");
-        return;
-      }
-    }
-    setIsScanning(true);
-  };
-
   const handleSave = async () => {
-    if (!form.calories) {
-      Alert.alert("エラー", "カロリーを入力してください");
-      return;
-    }
+    if (!validate()) return;
 
     try {
       setLoading(true);
+      const numericData = getNumericData();
       await api.addMeal({
         date: form.date,
         timeSlot: form.timeSlot,
-        calories: Number(form.calories),
-        protein: Number(form.protein || 0),
-        fat: Number(form.fat || 0),
-        carbs: Number(form.carbs || 0),
+        ...numericData,
         imageId: "",
         base64Image: base64Image || undefined,
         memo: form.memo,
@@ -240,51 +160,32 @@ export default function AddMeal() {
 
   return (
     <ScrollView className="flex-1 bg-[#121212] p-4">
-      {/* 補助入力ボタン */}
       <View className="flex-row justify-between mb-4">
-        <TouchableOpacity
-          onPress={startScanning}
-          className="bg-[#1E1E1E] flex-1 mr-2 p-4 rounded-2xl flex-row items-center justify-center border border-[#BB86FC]"
-        >
+        <TouchableOpacity onPress={() => setIsScanning(true)} className="bg-[#1E1E1E] flex-1 mr-2 p-4 rounded-2xl flex-row items-center justify-center border border-[#BB86FC]">
           <Barcode size={18} color="#BB86FC" />
           <Text className="text-[#BB86FC] font-bold ml-2">バーコード</Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => setIsMenuModalVisible(true)}
-          className="bg-[#1E1E1E] flex-1 ml-2 p-4 rounded-2xl flex-row items-center justify-center border border-[#03DAC6]"
-        >
+        <TouchableOpacity onPress={() => setIsMenuModalVisible(true)} className="bg-[#1E1E1E] flex-1 ml-2 p-4 rounded-2xl flex-row items-center justify-center border border-[#03DAC6]">
           <Star size={18} color="#03DAC6" />
           <Text className="text-[#03DAC6] font-bold ml-2">マイメニュー</Text>
         </TouchableOpacity>
       </View>
 
-      {/* 追加の補助ボタン */}
       <View className="flex-row justify-between mb-6">
-        <TouchableOpacity
-          onPress={copyYesterdayMeal}
-          className="bg-[#1E1E1E] flex-1 mr-2 p-3 rounded-2xl flex-row items-center justify-center border border-gray-600"
-        >
+        <TouchableOpacity onPress={copyYesterdayMeal} className="bg-[#1E1E1E] flex-1 mr-2 p-3 rounded-2xl flex-row items-center justify-center border border-gray-600">
           <Text className="text-gray-400 font-bold">昨日の内容をコピー</Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          onPress={calculateCaloriesFromPFC}
-          className="bg-[#1E1E1E] flex-1 ml-2 p-3 rounded-2xl flex-row items-center justify-center border border-gray-600"
-        >
+        <TouchableOpacity onPress={calculateCaloriesFromPFC} className="bg-[#1E1E1E] flex-1 ml-2 p-3 rounded-2xl flex-row items-center justify-center border border-gray-600">
           <Text className="text-gray-400 font-bold">PFCから計算</Text>
         </TouchableOpacity>
       </View>
 
-      {/* 履歴からのサジェスト */}
       {historySuggestions.length > 0 && (
         <View className="mb-6">
           <Text className="text-gray-400 text-sm mb-2 font-medium">履歴から素早く入力</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {historySuggestions.map((item, index) => (
-              <TouchableOpacity
-                key={index}
-                onPress={() => selectMenu(item)}
-                className="bg-[#1E1E1E] mr-3 p-3 rounded-2xl border border-[#333] min-w-[120px]"
-              >
+              <TouchableOpacity key={index} onPress={() => selectMenu(item)} className="bg-[#1E1E1E] mr-3 p-3 rounded-2xl border border-[#333] min-w-[120px]">
                 <Text className="text-white font-bold mb-1" numberOfLines={1}>{item.name}</Text>
                 <Text className="text-gray-500 text-[10px]">{item.calories}kcal</Text>
               </TouchableOpacity>
@@ -293,17 +194,13 @@ export default function AddMeal() {
         </View>
       )}
 
-      {/* 画像選択セクション */}
       <View className="mb-6">
         <Text className="text-gray-400 text-sm mb-2 font-medium">食事の写真</Text>
         <View className="bg-[#1E1E1E] rounded-3xl p-4 border border-[#333] items-center">
           {image ? (
             <View className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden mb-4">
               <Image source={{ uri: image }} className="w-full h-full" />
-              <TouchableOpacity
-                onPress={() => setImage(null)}
-                className="absolute top-2 right-2 bg-black/50 p-2 rounded-full"
-              >
+              <TouchableOpacity onPress={() => {setImage(null); setBase64Image(null);}} className="absolute top-2 right-2 bg-black/50 p-2 rounded-full">
                 <X size={20} color="#fff" />
               </TouchableOpacity>
             </View>
@@ -313,207 +210,77 @@ export default function AddMeal() {
             </View>
           )}
           <View className="flex-row">
-            <TouchableOpacity
-              onPress={() => pickImage(true)}
-              className="bg-[#333] px-6 py-3 rounded-full flex-row items-center mr-2"
-            >
-              <Camera size={18} color="#fff" />
-              <Text className="text-white font-bold ml-2">撮影</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => pickImage(false)}
-              className="bg-[#333] px-6 py-3 rounded-full flex-row items-center ml-2"
-            >
-              <ImageIcon size={18} color="#fff" />
-              <Text className="text-white font-bold ml-2">選択</Text>
-            </TouchableOpacity>
+            <TouchableOpacity onPress={() => pickImage(true)} className="bg-[#333] px-6 py-3 rounded-full flex-row items-center mr-2"><Camera size={18} color="#fff" /><Text className="text-white font-bold ml-2">撮影</Text></TouchableOpacity>
+            <TouchableOpacity onPress={() => pickImage(false)} className="bg-[#333] px-6 py-3 rounded-full flex-row items-center ml-2"><ImageIcon size={18} color="#fff" /><Text className="text-white font-bold ml-2">選択</Text></TouchableOpacity>
           </View>
         </View>
       </View>
 
-      {/* マイメニュー選択モーダル */}
-      <Modal visible={isMenuModalVisible} animationType="slide">
-        <View className="flex-1 bg-[#121212] p-6">
-          <View className="flex-row justify-between items-center mb-6">
-            <Text className="text-white text-2xl font-bold">マイメニュー</Text>
-            <TouchableOpacity onPress={() => setIsMenuModalVisible(false)}>
-              <X size={24} color="#fff" />
-            </TouchableOpacity>
-          </View>
-          <ScrollView>
-            {menus.length === 0 ? (
-              <Text className="text-gray-500 italic">メニューが登録されていません</Text>
-            ) : (
-              menus.map((menu) => (
-                <TouchableOpacity
-                  key={menu.id}
-                  onPress={() => selectMenu(menu)}
-                  className="bg-[#1E1E1E] p-4 rounded-2xl mb-3 flex-row items-center border border-[#333]"
-                >
-                  <View className="flex-1">
-                    <Text className="text-white font-bold text-lg">{menu.name}</Text>
-                    <Text className="text-gray-400 text-sm">
-                      {menu.calories}kcal | P:{menu.protein} F:{menu.fat} C:{menu.carbs}
-                    </Text>
-                  </View>
-                  <ChevronRight size={20} color="#444" />
-                </TouchableOpacity>
-              ))
-            )}
-          </ScrollView>
-        </View>
-      </Modal>
-
-      {/* バーコードスキャナー・モーダル */}
-      <Modal visible={isScanning} animationType="slide">
-        <View className="flex-1 bg-black">
-          <CameraView
-            style={StyleSheet.absoluteFillObject}
-            onBarcodeScanned={handleBarcodeScanned}
-            barcodeScannerSettings={{
-              barcodeTypes: ["ean13", "ean8", "upc_a", "upc_e"],
-            }}
-          />
-          <TouchableOpacity
-            onPress={() => setIsScanning(false)}
-            className="absolute top-12 right-6 bg-[#1E1E1E] p-2 rounded-full"
-          >
-            <X size={24} color="#fff" />
-          </TouchableOpacity>
-        </View>
-      </Modal>
-
-      {/* フォームセクション */}
       <View className="mb-6">
         <Text className="text-gray-400 text-sm mb-2 font-medium">基本情報</Text>
         <View className="bg-[#1E1E1E] rounded-2xl p-4 border border-[#333]">
           <View className="mb-4">
             <Text className="text-gray-500 text-xs mb-1">日付</Text>
-            <TextInput
-              className="text-white text-lg border-b border-[#333] pb-1"
-              value={form.date}
-              onChangeText={(t) => setForm({ ...form, date: t })}
-              placeholder="2026-04-15"
-              placeholderTextColor="#444"
-            />
+            <TextInput className="text-white text-lg border-b border-[#333] pb-1" value={form.date} onChangeText={(t) => updateForm({ date: t })} />
           </View>
-          
           <Text className="text-gray-500 text-xs mb-2">時間帯</Text>
           <View className="flex-row flex-wrap">
             {TIME_SLOTS.map((slot) => (
-              <TouchableOpacity
-                key={slot}
-                onPress={() => setForm({ ...form, timeSlot: slot })}
-                className={`mr-2 mb-2 px-4 py-2 rounded-full border ${
-                  form.timeSlot === slot ? "bg-[#BB86FC] border-[#BB86FC]" : "bg-transparent border-[#444]"
-                }`}
-              >
-                <Text className={form.timeSlot === slot ? "text-black font-bold" : "text-gray-400"}>
-                  {slot}
-                </Text>
+              <TouchableOpacity key={slot} onPress={() => updateForm({ timeSlot: slot })} className={`mr-2 mb-2 px-4 py-2 rounded-full border ${form.timeSlot === slot ? "bg-[#BB86FC] border-[#BB86FC]" : "bg-transparent border-[#444]"}`}>
+                <Text className={form.timeSlot === slot ? "text-black font-bold" : "text-gray-400"}>{slot}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
       </View>
 
-      {/* マクロ栄養素セクション */}
       <View className="mb-6">
         <Text className="text-gray-400 text-sm mb-2 font-medium">マクロ栄養素</Text>
         <View className="bg-[#1E1E1E] rounded-2xl p-4 border border-[#333]">
           <View className="flex-row justify-between mb-4">
-            <View className="flex-1 mr-2">
-              <Text className="text-gray-500 text-xs mb-1">カロリー (kcal)</Text>
-              <TextInput
-                className="text-white text-xl font-bold border-b border-[#333] pb-1"
-                value={form.calories}
-                onChangeText={(t) => setForm({ ...form, calories: t })}
-                keyboardType="numeric"
-                placeholder="0"
-                placeholderTextColor="#444"
-              />
-            </View>
-            <View className="flex-1 ml-2">
-              <Text className="text-gray-500 text-xs mb-1">タンパク質 (g)</Text>
-              <TextInput
-                className="text-white text-xl font-bold border-b border-[#333] pb-1"
-                value={form.protein}
-                onChangeText={(t) => setForm({ ...form, protein: t })}
-                keyboardType="numeric"
-                placeholder="0"
-                placeholderTextColor="#444"
-              />
-            </View>
+            <View className="flex-1 mr-2"><Text className="text-gray-500 text-xs mb-1">カロリー (kcal)</Text><TextInput className="text-white text-xl font-bold border-b border-[#333] pb-1" value={form.calories} onChangeText={(t) => updateForm({ calories: t })} keyboardType="numeric" /></View>
+            <View className="flex-1 ml-2"><Text className="text-gray-500 text-xs mb-1">タンパク質 (g)</Text><TextInput className="text-white text-xl font-bold border-b border-[#333] pb-1" value={form.protein} onChangeText={(t) => updateForm({ protein: t })} keyboardType="numeric" /></View>
           </View>
           <View className="flex-row justify-between">
-            <View className="flex-1 mr-2">
-              <Text className="text-gray-500 text-xs mb-1">脂質 (g)</Text>
-              <TextInput
-                className="text-white text-xl font-bold border-b border-[#333] pb-1"
-                value={form.fat}
-                onChangeText={(t) => setForm({ ...form, fat: t })}
-                keyboardType="numeric"
-                placeholder="0"
-                placeholderTextColor="#444"
-              />
-            </View>
-            <View className="flex-1 ml-2">
-              <Text className="text-gray-500 text-xs mb-1">炭水化物 (g)</Text>
-              <TextInput
-                className="text-white text-xl font-bold border-b border-[#333] pb-1"
-                value={form.carbs}
-                onChangeText={(t) => setForm({ ...form, carbs: t })}
-                keyboardType="numeric"
-                placeholder="0"
-                placeholderTextColor="#444"
-              />
-            </View>
+            <View className="flex-1 mr-2"><Text className="text-gray-500 text-xs mb-1">脂質 (g)</Text><TextInput className="text-white text-xl font-bold border-b border-[#333] pb-1" value={form.fat} onChangeText={(t) => updateForm({ fat: t })} keyboardType="numeric" /></View>
+            <View className="flex-1 ml-2"><Text className="text-gray-500 text-xs mb-1">炭水化物 (g)</Text><TextInput className="text-white text-xl font-bold border-b border-[#333] pb-1" value={form.carbs} onChangeText={(t) => updateForm({ carbs: t })} keyboardType="numeric" /></View>
           </View>
         </View>
       </View>
 
-      {/* メモセクション */}
       <View className="mb-8">
         <Text className="text-gray-400 text-sm mb-2 font-medium">メニュー名 / メモ</Text>
         <View className="bg-[#1E1E1E] rounded-2xl p-4 border border-[#333]">
-          <TextInput
-            className="text-white text-base"
-            value={form.memo}
-            onChangeText={(t) => setForm({ ...form, memo: t })}
-            multiline
-            numberOfLines={2}
-            placeholder="メニュー名を入力するとマイメニューに保存できます"
-            placeholderTextColor="#444"
-          />
+          <TextInput className="text-white text-base" value={form.memo} onChangeText={(t) => updateForm({ memo: t })} multiline numberOfLines={2} placeholderTextColor="#444" />
         </View>
       </View>
 
-      {/* 保存・登録ボタン */}
       <View className="mb-12">
-        <TouchableOpacity
-          onPress={saveAsMenu}
-          disabled={loading}
-          className="bg-transparent border border-[#03DAC6] p-4 rounded-2xl flex-row items-center justify-center mb-4"
-        >
-          <Star size={20} color="#03DAC6" />
-          <Text className="text-[#03DAC6] font-bold ml-2">マイメニューに登録</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={handleSave}
-          disabled={loading}
-          className="bg-[#BB86FC] p-4 rounded-2xl flex-row items-center justify-center shadow-lg"
-        >
-          {loading ? (
-            <ActivityIndicator color="#000" />
-          ) : (
-            <>
-              <Save size={20} color="#000" />
-              <Text className="text-black font-bold ml-2 text-lg">記録を保存する</Text>
-            </>
-          )}
+        <TouchableOpacity onPress={handleSave} disabled={loading} className="bg-[#BB86FC] p-4 rounded-2xl flex-row items-center justify-center shadow-lg">
+          {loading ? <ActivityIndicator color="#000" /> : <><Save size={20} color="#000" /><Text className="text-black font-bold ml-2 text-lg">記録を保存する</Text></>}
         </TouchableOpacity>
       </View>
+
+      <Modal visible={isMenuModalVisible} animationType="slide">
+        <View className="flex-1 bg-[#121212] p-6">
+          <View className="flex-row justify-between items-center mb-6"><Text className="text-white text-2xl font-bold">マイメニュー</Text><TouchableOpacity onPress={() => setIsMenuModalVisible(false)}><X size={24} color="#fff" /></TouchableOpacity></View>
+          <ScrollView>
+            {menus.map((menu) => (
+              <TouchableOpacity key={menu.id} onPress={() => selectMenu(menu)} className="bg-[#1E1E1E] p-4 rounded-2xl mb-3 flex-row items-center border border-[#333]">
+                <View className="flex-1"><Text className="text-white font-bold text-lg">{menu.name}</Text><Text className="text-gray-400 text-sm">{menu.calories}kcal | P:{menu.protein} F:{menu.fat} C:{menu.carbs}</Text></View>
+                <ChevronRight size={20} color="#444" />
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      </Modal>
+
+      <Modal visible={isScanning} animationType="slide">
+        <View className="flex-1 bg-black">
+          <CameraView style={StyleSheet.absoluteFillObject} onBarcodeScanned={handleBarcodeScanned} barcodeScannerSettings={{ barcodeTypes: ["ean13", "ean8", "upc_a", "upc_e"] }} />
+          <TouchableOpacity onPress={() => setIsScanning(false)} className="absolute top-12 right-6 bg-[#1E1E1E] p-2 rounded-full"><X size={24} color="#fff" /></TouchableOpacity>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
