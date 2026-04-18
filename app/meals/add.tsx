@@ -16,6 +16,7 @@ export default function AddMeal() {
   const [isScanning, setIsScanning] = useState(false);
   const [isMenuModalVisible, setIsMenuModalVisible] = useState(false);
   const [menus, setMenus] = useState<Menu[]>([]);
+  const [historySuggestions, setHistorySuggestions] = useState<Menu[]>([]);
   const [image, setImage] = useState<string | null>(null);
   const [base64Image, setBase64Image] = useState<string | null>(null);
   
@@ -74,6 +75,7 @@ export default function AddMeal() {
 
   useEffect(() => {
     loadMenus();
+    loadHistorySuggestions();
   }, []);
 
   const loadMenus = async () => {
@@ -82,6 +84,32 @@ export default function AddMeal() {
       setMenus(data);
     } catch (err) {
       console.error("Failed to load menus", err);
+    }
+  };
+
+  const loadHistorySuggestions = async () => {
+    try {
+      const res = await api.getSummary();
+      // 直近のユニークな履歴を抽出
+      const suggestions: Menu[] = [];
+      const seen = new Set();
+      
+      [...res.meals].reverse().forEach(m => {
+        if (m.memo && !seen.has(m.memo)) {
+          seen.add(m.memo);
+          suggestions.push({
+            id: m.id,
+            name: m.memo,
+            calories: m.calories,
+            protein: m.protein,
+            fat: m.fat,
+            carbs: m.carbs
+          });
+        }
+      });
+      setHistorySuggestions(suggestions.slice(0, 5));
+    } catch (err) {
+      console.error("Failed to load history suggestions", err);
     }
   };
 
@@ -245,6 +273,25 @@ export default function AddMeal() {
           <Text className="text-gray-400 font-bold">PFCから計算</Text>
         </TouchableOpacity>
       </View>
+
+      {/* 履歴からのサジェスト */}
+      {historySuggestions.length > 0 && (
+        <View className="mb-6">
+          <Text className="text-gray-400 text-sm mb-2 font-medium">履歴から素早く入力</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {historySuggestions.map((item, index) => (
+              <TouchableOpacity
+                key={index}
+                onPress={() => selectMenu(item)}
+                className="bg-[#1E1E1E] mr-3 p-3 rounded-2xl border border-[#333] min-w-[120px]"
+              >
+                <Text className="text-white font-bold mb-1" numberOfLines={1}>{item.name}</Text>
+                <Text className="text-gray-500 text-[10px]">{item.calories}kcal</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
 
       {/* 画像選択セクション */}
       <View className="mb-6">
