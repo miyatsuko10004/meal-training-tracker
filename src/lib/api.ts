@@ -64,6 +64,33 @@ export const api = {
     return response.json();
   },
 
+  async updateMeal(meal: Meal & { base64Image?: string }) {
+    const response = await fetch(GAS_URL, {
+      method: "POST",
+      body: JSON.stringify({
+        action: "updateMeal",
+        accessKey: ACCESS_KEY,
+        driveFolderId: DRIVE_FOLDER_ID,
+        ...meal,
+      }),
+    });
+    if (!response.ok) throw new Error("Failed to update meal");
+    return response.json();
+  },
+
+  async deleteMeal(id: string) {
+    const response = await fetch(GAS_URL, {
+      method: "POST",
+      body: JSON.stringify({
+        action: "deleteMeal",
+        accessKey: ACCESS_KEY,
+        id,
+      }),
+    });
+    if (!response.ok) throw new Error("Failed to delete meal");
+    return response.json();
+  },
+
   async getMenus() {
     const url = `${GAS_URL}?action=getMenus&accessKey=${ACCESS_KEY}`;
     const response = await fetch(url);

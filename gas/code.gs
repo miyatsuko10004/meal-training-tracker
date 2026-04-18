@@ -43,6 +43,69 @@ function doPost(e) {
         imageId || data.imageId || "",
         data.memo || ""
       ]);
+    } else if (action === "updateMeal") {
+      const sheet = ss.getSheetByName("Meals");
+      const dataRange = sheet.getDataRange();
+      const values = dataRange.getValues();
+      const headers = values[0];
+      const idIndex = headers.indexOf("id");
+      
+      let rowIndex = -1;
+      for (let i = 1; i < values.length; i++) {
+        if (values[i][idIndex] == data.id) {
+          rowIndex = i + 1;
+          break;
+        }
+      }
+      
+      if (rowIndex !== -1) {
+        let imageId = data.imageId || "";
+        const driveFolderId = data.driveFolderId;
+        
+        if (data.base64Image && driveFolderId) {
+          const folder = DriveApp.getFolderById(driveFolderId);
+          const fileName = `meal_${Utilities.formatDate(new Date(), "GMT+9", "yyyyMMdd_HHmmss")}.jpg`;
+          const blob = Utilities.newBlob(Utilities.base64Decode(data.base64Image), "image/jpeg", fileName);
+          const file = folder.createFile(blob);
+          file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+          imageId = file.getId();
+        }
+
+        const rowData = [
+          data.id,
+          data.date,
+          data.timeSlot,
+          data.calories,
+          data.protein,
+          data.fat,
+          data.carbs,
+          imageId,
+          data.memo || ""
+        ];
+        sheet.getRange(rowIndex, 1, 1, rowData.length).setValues([rowData]);
+      } else {
+        throw new Error("Meal ID not found");
+      }
+    } else if (action === "deleteMeal") {
+      const sheet = ss.getSheetByName("Meals");
+      const dataRange = sheet.getDataRange();
+      const values = dataRange.getValues();
+      const headers = values[0];
+      const idIndex = headers.indexOf("id");
+      
+      let rowIndex = -1;
+      for (let i = 1; i < values.length; i++) {
+        if (values[i][idIndex] == data.id) {
+          rowIndex = i + 1;
+          break;
+        }
+      }
+      
+      if (rowIndex !== -1) {
+        sheet.deleteRow(rowIndex);
+      } else {
+        throw new Error("Meal ID not found");
+      }
     } else if (action === "addWorkout") {
       const workoutSheet = ss.getSheetByName("Workouts");
       const setSheet = ss.getSheetByName("Sets");

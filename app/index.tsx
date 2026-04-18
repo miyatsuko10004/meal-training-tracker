@@ -79,7 +79,9 @@ export default function Dashboard() {
       <View className="mb-8">
         <View className="flex-row justify-between items-center mb-4">
           <Text className="text-white text-xl font-bold">直近の食事</Text>
-          <TouchableOpacity><Text className="text-[#BB86FC]">すべて見る</Text></TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push("/meals/history")}>
+            <Text className="text-[#BB86FC]">すべて見る</Text>
+          </TouchableOpacity>
         </View>
         {data?.meals.length === 0 ? (
           <Text className="text-gray-500 italic">まだ記録がありません</Text>
