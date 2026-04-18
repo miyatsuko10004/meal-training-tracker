@@ -30,6 +30,18 @@ export default function MealDetail() {
     memo: "",
   });
 
+  const calculateCaloriesFromPFC = () => {
+    const p = Number(form.protein) || 0;
+    const f = Number(form.fat) || 0;
+    const c = Number(form.carbs) || 0;
+    const total = p * 4 + f * 9 + c * 4;
+    if (total > 0) {
+      setForm({ ...form, calories: total });
+    } else {
+      Alert.alert("情報不足", "PFCの値を入力してください");
+    }
+  };
+
   useEffect(() => {
     loadData();
   }, [id]);
@@ -162,6 +174,16 @@ export default function MealDetail() {
       </View>
 
       <ScrollView className="flex-1 p-4">
+        {/* 補助ボタン */}
+        <View className="flex-row justify-end mb-4">
+          <TouchableOpacity
+            onPress={calculateCaloriesFromPFC}
+            className="bg-[#1E1E1E] px-4 py-2 rounded-xl border border-gray-600"
+          >
+            <Text className="text-gray-400 font-bold text-xs">PFCからカロリーを計算</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* 画像選択セクション */}
         <View className="mb-6">
           <View className="bg-[#1E1E1E] rounded-3xl p-4 border border-[#333] items-center">

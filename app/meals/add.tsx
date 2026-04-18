@@ -29,6 +29,49 @@ export default function AddMeal() {
     memo: "",
   });
 
+  const calculateCaloriesFromPFC = () => {
+    const p = Number(form.protein) || 0;
+    const f = Number(form.fat) || 0;
+    const c = Number(form.carbs) || 0;
+    const total = p * 4 + f * 9 + c * 4;
+    if (total > 0) {
+      setForm({ ...form, calories: String(total) });
+    } else {
+      Alert.alert("情報不足", "PFCの値を入力してください");
+    }
+  };
+
+  const copyYesterdayMeal = async () => {
+    try {
+      setLoading(true);
+      const res = await api.getSummary();
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString().split("T")[0];
+      
+      const yesterdayMeals = res.meals.filter(m => m.date === yesterdayStr);
+      const sameTimeMeal = yesterdayMeals.find(m => m.timeSlot === form.timeSlot) || yesterdayMeals[0];
+      
+      if (sameTimeMeal) {
+        setForm({
+          ...form,
+          calories: String(sameTimeMeal.calories),
+          protein: String(sameTimeMeal.protein),
+          fat: String(sameTimeMeal.fat),
+          carbs: String(sameTimeMeal.carbs),
+          memo: sameTimeMeal.memo,
+        });
+        Alert.alert("成功", "昨日の食事内容をコピーしました");
+      } else {
+        Alert.alert("データなし", "昨日の食事記録が見つかりませんでした");
+      }
+    } catch (err) {
+      Alert.alert("エラー", "コピーに失敗しました");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadMenus();
   }, []);
@@ -184,6 +227,22 @@ export default function AddMeal() {
         >
           <Star size={18} color="#03DAC6" />
           <Text className="text-[#03DAC6] font-bold ml-2">マイメニュー</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* 追加の補助ボタン */}
+      <View className="flex-row justify-between mb-6">
+        <TouchableOpacity
+          onPress={copyYesterdayMeal}
+          className="bg-[#1E1E1E] flex-1 mr-2 p-3 rounded-2xl flex-row items-center justify-center border border-gray-600"
+        >
+          <Text className="text-gray-400 font-bold">昨日の内容をコピー</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={calculateCaloriesFromPFC}
+          className="bg-[#1E1E1E] flex-1 ml-2 p-3 rounded-2xl flex-row items-center justify-center border border-gray-600"
+        >
+          <Text className="text-gray-400 font-bold">PFCから計算</Text>
         </TouchableOpacity>
       </View>
 
