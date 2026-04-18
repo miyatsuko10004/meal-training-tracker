@@ -33,8 +33,31 @@ export default function Dashboard() {
     );
   }
 
-  const todayCalories = data?.meals.reduce((acc, m) => acc + Number(m.calories), 0) || 0;
+  const todayMeals = data?.meals.filter(m => m.date === new Date().toISOString().split("T")[0]) || [];
+  const todayCalories = todayMeals.reduce((acc, m) => acc + Number(m.calories), 0);
+  const todayP = todayMeals.reduce((acc, m) => acc + Number(m.protein), 0);
+  const todayF = todayMeals.reduce((acc, m) => acc + Number(m.fat), 0);
+  const todayC = todayMeals.reduce((acc, m) => acc + Number(m.carbs), 0);
+
   const targetCalories = data?.profile?.targetCalories || 2000;
+  const targetP = data?.profile?.targetProtein || 150;
+  const targetF = data?.profile?.targetFat || 60;
+  const targetC = data?.profile?.targetCarbs || 250;
+
+  const NutrientBar = ({ label, current, target, color }: { label: string, current: number, target: number, color: string }) => (
+    <View className="flex-1 mx-1">
+      <View className="flex-row justify-between mb-1">
+        <Text className="text-gray-400 text-[10px] font-bold">{label}</Text>
+        <Text className="text-white text-[10px]">{current}g / {target}g</Text>
+      </View>
+      <View className="h-1 w-full bg-[#333] rounded-full overflow-hidden">
+        <View 
+          className="h-full rounded-full" 
+          style={{ width: `${Math.min((current / target) * 100, 100)}%`, backgroundColor: color }} 
+        />
+      </View>
+    </View>
+  );
 
   return (
     <ScrollView className="flex-1 bg-[#121212] p-4">
@@ -43,18 +66,25 @@ export default function Dashboard() {
         onPress={() => router.push("/analytics")}
         className="bg-[#1E1E1E] p-6 rounded-3xl mb-6 shadow-lg border border-[#333]"
       >
-        <Text className="text-gray-400 text-sm mb-1 font-medium">今日の摂取カロリー</Text>
+        <Text className="text-gray-400 text-sm mb-1 font-medium">今日の摂取状況</Text>
         <View className="flex-row items-baseline mb-4">
           <Text className="text-white text-5xl font-bold">{todayCalories}</Text>
           <Text className="text-gray-500 text-lg ml-2">/ {targetCalories} kcal</Text>
         </View>
-        <View className="h-2 w-full bg-[#333] rounded-full overflow-hidden">
+        <View className="h-2 w-full bg-[#333] rounded-full overflow-hidden mb-6">
           <View 
             className="h-full bg-[#BB86FC] rounded-full" 
             style={{ width: `${Math.min((todayCalories / targetCalories) * 100, 100)}%` }} 
           />
         </View>
-        <Text className="text-[#BB86FC] text-xs mt-3 text-right">詳細な分析を見る 〉</Text>
+
+        {/* PFC進捗 */}
+        <View className="flex-row justify-between">
+          <NutrientBar label="P" current={todayP} target={targetP} color="#BB86FC" />
+          <NutrientBar label="F" current={todayF} target={targetF} color="#03DAC6" />
+          <NutrientBar label="C" current={todayC} target={targetC} color="#FFB74D" />
+        </View>
+        <Text className="text-[#BB86FC] text-xs mt-4 text-right">詳細な分析を見る 〉</Text>
       </TouchableOpacity>
 
       {/* アクションボタン */}
@@ -87,16 +117,20 @@ export default function Dashboard() {
           <Text className="text-gray-500 italic">まだ記録がありません</Text>
         ) : (
           data?.meals.slice(0, 3).map((meal) => (
-            <View key={meal.id} className="bg-[#1E1E1E] p-4 rounded-2xl mb-3 flex-row items-center border border-[#333]">
+            <TouchableOpacity 
+              key={meal.id} 
+              onPress={() => router.push({ pathname: "/meals/[id]", params: { id: meal.id } })}
+              className="bg-[#1E1E1E] p-4 rounded-2xl mb-3 flex-row items-center border border-[#333]"
+            >
               <View className="w-12 h-12 bg-[#333] rounded-xl items-center justify-center mr-4">
                 <Utensils size={24} color="#BB86FC" />
               </View>
               <View className="flex-1">
                 <Text className="text-white font-bold">{meal.timeSlot || "食事"}</Text>
-                <Text className="text-gray-400 text-xs">{meal.date}</Text>
+                <Text className="text-gray-500 text-[10px]">P:{meal.protein} F:{meal.fat} C:{meal.carbs}</Text>
               </View>
               <Text className="text-white font-bold">{meal.calories} kcal</Text>
-            </View>
+            </TouchableOpacity>
           ))
         )}
       </View>
