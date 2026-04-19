@@ -4,6 +4,7 @@ import { api, Meal, Profile } from "../../src/lib/api";
 import { BarChart, LineChart } from "react-native-chart-kit";
 import { ChevronLeft, TrendingUp, AlertCircle, CheckCircle2 } from "lucide-react-native";
 import { useRouter } from "expo-router";
+import { getJSTDate } from "../../src/utils/date";
 
 const screenWidth = Dimensions.get("window").width;
 
@@ -42,12 +43,12 @@ export default function Analytics() {
     const actuals: number[] = [];
     const targets: number[] = [];
 
-    const now = new Date();
+    const now = getJSTDate();
     const count = period === "daily" ? 7 : period === "weekly" ? 4 : 6; // 日次は7日分、週次は4週間分、月次は6ヶ月分
 
     for (let i = count - 1; i >= 0; i--) {
-      let start = new Date();
-      let end = new Date();
+      let start = getJSTDate();
+      let end = getJSTDate();
       let label = "";
 
       if (period === "daily") {

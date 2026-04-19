@@ -3,7 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from "rea
 import { api, Meal, Workout, Profile } from "../src/lib/api";
 import { Activity, Utensils, Dumbbell } from "lucide-react-native";
 import { useRouter } from "expo-router";
-import { getTodayStr } from "../src/hooks/useMealForm";
+import { getTodayStr } from "../src/utils/date";
 
 export default function Dashboard() {
   const router = useRouter();

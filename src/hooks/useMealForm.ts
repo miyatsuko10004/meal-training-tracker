@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Alert } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Meal } from "../lib/api";
+import { getTodayStr } from "../utils/date";
 
 export interface MealForm {
   date: string;
@@ -12,13 +13,6 @@ export interface MealForm {
   carbs: string;
   memo: string;
 }
-
-// タイムゾーン（JST）を考慮した今日の日付取得
-export const getTodayStr = () => {
-  const now = new Date();
-  const jst = new Date(now.getTime() + (9 * 60 * 60 * 1000));
-  return jst.toISOString().split("T")[0];
-};
 
 export const useMealForm = (initialData?: Meal) => {
   const [image, setImage] = useState<string | null>(initialData?.imageId ? `https://lh3.googleusercontent.com/d/${initialData.imageId}` : null);
